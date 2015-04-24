@@ -15,7 +15,7 @@ int main (){
 			case 99: creditos(); //67='C' e 99='c'
 				break;
 			case 83: 
-			case 115: return 0;// 83='S' e 115='s'
+			case 115: return 0;// 83='S' e 115='s' SAIR
 		}
 	}
 }

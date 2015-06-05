@@ -5,6 +5,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/time.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define UP 65
 #define DOWN 66
@@ -17,6 +22,16 @@
 char matriz_campo_do_jogo[LINHAS_DA_MATRIZ][COLUNAS_DA_MATRIZ];
 int posicao_bola_x, posicao_bola_y;
 int COEFICIENTE_DE_X, COEFICIENTE_DE_Y;
+int primeiro3adv;
+
+int done=0; 
+int sockfd;
+pthread_mutex_t mutexsum = PTHREAD_MUTEX_INITIALIZER;  
+
+void *enviarmensagem(char code[]);
+
+void *recebermensagem();
+
 
 static struct termios g_old_kbd_mode;
 /*****************************************************************************
@@ -146,10 +161,13 @@ void movimentarbola()
 
 void main ()
 {
-    int i, j, primeiro3, ispressed;
+    int i, j, primeiro3, ispressed, moverbola=0;
     char keypressed;
+    char msgsocket[2];
     COEFICIENTE_DE_X = 1;
     COEFICIENTE_DE_Y = 2;
+
+    configurarsocket();
     //for para desenhar a matriz que representa o campo
     for (i = 0; i < LINHAS_DA_MATRIZ; i++)
     {
@@ -192,9 +210,15 @@ void main ()
     posicao_bola_y = CENTRO_DA_MATRIZ_Y;
     posicao_bola_x = CENTRO_DA_MATRIZ_X;
     primeiro3 = 9;
+    primeiro3adv = 9;
     while (1)
     {
-        movimentarbola();
+        if(moverbola==0)
+            movimentarbola();
+        if(moverbola==5)
+            moverbola=0;
+        else
+            moverbola++;
         system("clear");
         for (i = 0; i < LINHAS_DA_MATRIZ; i++)
         {
@@ -212,13 +236,112 @@ void main ()
             {
                 up(primeiro3);
                 primeiro3 -= 1;
+                msgsocket[0]='a';
+                enviarmensagem(msgsocket);
             }
             if (keypressed == DOWN && primeiro3 != LINHAS_DA_MATRIZ-6)
             {
                 down(primeiro3);
                 primeiro3 += 1;
+                msgsocket[0]='b';
+                enviarmensagem(msgsocket);
             }
         }
-        usleep(80000);
+        usleep(50000);
+    }
+}
+
+void configurarsocket(){
+    int len;
+    int result;
+    char buf[256];
+    struct sockaddr_in address;
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    address.sin_port = htons(9035);
+
+    len = sizeof(address);
+
+    result = connect(sockfd, (struct sockaddr *)&address, len);
+
+    printf("\n\nConectando\n\n");
+
+    if(result == -1)
+    {
+        perror("\nConexao falhou. Tente novamente.\n");
+        exit(1);
+    }
+    else
+    {
+        printf("\n\nConexao sucedida\nEsperando o outro jogador\n");
+    }
+
+    pthread_t threads[1];
+    void *status;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+    pthread_create(&threads[0], &attr, recebermensagem, NULL);
+
+    while(!done);
+}
+
+void *enviarmensagem(char code[])
+{
+
+    int bufsize=100;
+    char *buffer=malloc(bufsize);
+
+    bzero(buffer,bufsize);
+        
+    /*if(strcmp(code,"exit")==0)
+    {
+
+        done = 1;
+
+
+        pthread_mutex_destroy(&mutexsum);
+        pthread_exit(NULL);
+        close(sockfd);
+    } */   
+
+    write(sockfd,code,strlen(code));
+
+    pthread_mutex_lock (&mutexsum);
+
+    pthread_mutex_unlock (&mutexsum);
+
+}
+
+void *recebermensagem()
+{
+    char str[80];
+    int bufsize=100;
+    char *buffer=malloc(bufsize);
+
+    while(1)
+    {
+        bzero(buffer,bufsize);
+        read(sockfd,buffer,bufsize);
+
+        if(buffer[0]=='a'){
+            upadversario(primeiro3adv);
+            primeiro3adv -= 1;
+        }
+        if(buffer[0]=='b'){
+            downadversario(primeiro3adv);
+            primeiro3adv += 1;
+        }
+        if(buffer[0]=='c'){
+            done=1;
+        }
+        printf("%s\n", buffer);
+
+        pthread_mutex_lock (&mutexsum);
+        pthread_mutex_unlock (&mutexsum);
     }
 }

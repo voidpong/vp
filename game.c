@@ -22,7 +22,9 @@
 char matriz_campo_do_jogo[LINHAS_DA_MATRIZ][COLUNAS_DA_MATRIZ];
 int posicao_bola_x, posicao_bola_y;
 int COEFICIENTE_DE_X, COEFICIENTE_DE_Y;
-int primeiro3adv;
+int primeiro3esquerdo;
+int primeiro3direito;
+int numjogador;
 
 int done=0; 
 int sockfd;
@@ -95,7 +97,7 @@ static int getch(void)
         return 0;
     return temp;
 }
-void up (int p)
+void upesquerdo (int p)
 {
     matriz_campo_do_jogo[p-1][0] = '3';
     matriz_campo_do_jogo[p][0] = '2';
@@ -105,7 +107,7 @@ void up (int p)
     matriz_campo_do_jogo[p+4][0] = ' ';
 }
 
-void down (int p)
+void downesquerdo (int p)
 {
     matriz_campo_do_jogo[p][0] = ' ';
     matriz_campo_do_jogo[p+1][0] = '3';
@@ -115,7 +117,7 @@ void down (int p)
     matriz_campo_do_jogo[p+5][0] = '3';
 }
 
-void upadversario (int p)
+void updireito (int p)
 {
     matriz_campo_do_jogo[p-1][COLUNAS_DA_MATRIZ-1] = '3';
     matriz_campo_do_jogo[p][COLUNAS_DA_MATRIZ-1] = '2';
@@ -125,7 +127,7 @@ void upadversario (int p)
     matriz_campo_do_jogo[p+4][COLUNAS_DA_MATRIZ-1] = ' ';
 }
 
-void downadversario (int p)
+void downdireito (int p)
 {
     matriz_campo_do_jogo[p][COLUNAS_DA_MATRIZ-1] = ' ';
     matriz_campo_do_jogo[p+1][COLUNAS_DA_MATRIZ-1] = '3';
@@ -156,6 +158,26 @@ void movimentarbola()
     if (posicao_bola_x <= 1)
     {
         COEFICIENTE_DE_X = +1;
+    }
+}
+
+void movercima(int jogouadv){ //jogouadv = 1 -> jogador; jogouadv = 2 -> adversario
+    if(jogouadv==numjogador && primeiro3esquerdo != 1){
+        upesquerdo(primeiro3esquerdo);
+        primeiro3esquerdo--;
+    }else if(jogouadv!=numjogador && primeiro3direito != 1){
+        updireito(primeiro3direito);
+        primeiro3direito--;
+    }
+}
+
+void moverbaixo(int jogouadv){
+    if(jogouadv==numjogador && primeiro3esquerdo != LINHAS_DA_MATRIZ-6){
+        downesquerdo(primeiro3esquerdo);
+        primeiro3esquerdo++;
+    }else if(jogouadv!=numjogador && primeiro3direito != LINHAS_DA_MATRIZ-6){
+        downdireito(primeiro3direito);
+        primeiro3direito++;
     }
 }
 
@@ -209,8 +231,8 @@ void main ()
     }
     posicao_bola_y = CENTRO_DA_MATRIZ_Y;
     posicao_bola_x = CENTRO_DA_MATRIZ_X;
-    primeiro3 = 9;
-    primeiro3adv = 9;
+    primeiro3esquerdo = 9;
+    primeiro3direito = 9;
     while (1)
     {
         if(moverbola==0)
@@ -232,22 +254,20 @@ void main ()
             keypressed = getch();
             keypressed = getch();
             keypressed = getch();
-            if (keypressed == UP && primeiro3 != 1)
+            if (keypressed == UP)
             {
-                up(primeiro3);
-                primeiro3 -= 1;
+                movercima(1);
                 msgsocket[0]='a';
                 enviarmensagem(msgsocket);
             }
-            if (keypressed == DOWN && primeiro3 != LINHAS_DA_MATRIZ-6)
+            if (keypressed == DOWN)
             {
-                down(primeiro3);
-                primeiro3 += 1;
+                moverbaixo(1);
                 msgsocket[0]='b';
                 enviarmensagem(msgsocket);
             }
         }
-        usleep(50000);
+        usleep(40000);
     }
 }
 
@@ -328,18 +348,19 @@ void *recebermensagem()
         bzero(buffer,bufsize);
         read(sockfd,buffer,bufsize);
 
+        if(buffer[0]=='j'){
+            numjogador = buffer[1]-'0';
+        }
         if(buffer[0]=='a'){
-            upadversario(primeiro3adv);
-            primeiro3adv -= 1;
+            movercima(2);
         }
         if(buffer[0]=='b'){
-            downadversario(primeiro3adv);
-            primeiro3adv += 1;
+            moverbaixo(2);
         }
         if(buffer[0]=='c'){
             done=1;
         }
-        printf("%s\n", buffer);
+        //printf("%c\n", buffer[0]);
 
         pthread_mutex_lock (&mutexsum);
         pthread_mutex_unlock (&mutexsum);

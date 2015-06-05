@@ -10,7 +10,7 @@
 
 #define SERVER_BUSY "Nao ha mais conexoes disponiveis\n"
 
-#define MAX_USERS 20
+#define MAX_USERS 2
 #define MSG_LEN 4096
 
 int socket_listening ;
@@ -20,6 +20,7 @@ int  *list_of_sockets ;
 
 int  max_users = MAX_USERS ;
 int  list_len = 0 ;
+int flag = 0;
 
 char msg[MSG_LEN+1] ;
 
@@ -143,8 +144,8 @@ int main(int argc, char **argv) {
         }
 
         printf("[+] Ouvindo na porta %d [%d/%d] ...\n", port, list_len, max_users) ;
-        if(list_len==2){
-        	msg[0] = 'c';
+        if(list_len==2){        	
+	    	msg[0] = 'c';
         	send_message_to_all(list_of_sockets[0]);
         	send_message_to_all(list_of_sockets[1]);
         }
@@ -168,6 +169,14 @@ int main(int argc, char **argv) {
                 }
                 continue ;
             } else {
+            	if(list_len==2 && !flag){
+	            	msg[0] = 'j';
+		        	msg[1] = 1+'0';
+		        	send_message_to_all(list_of_sockets[0]);
+		        	msg[1] = 2+'0';
+		        	send_message_to_all(list_of_sockets[1]);
+		        	flag = 1;
+		        }
                 int i ;
                 for ( i = 0; i < max_users; i++ ) {
                     if ( FD_ISSET(list_of_sockets[i], &select_set) ) {

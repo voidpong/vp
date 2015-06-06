@@ -145,7 +145,7 @@ posicao_bola_x += COEFICIENTE_DE_X;
 matriz_campo_do_jogo[posicao_bola_y][posicao_bola_x] = '0'; 
 if (posicao_bola_y <= 1) 
 { 
-	COEFICIENTE_DE_Y *= -1; 
+   	COEFICIENTE_DE_Y *= -1; 
 	if(posicao_bola_y != 1) 
 		posicao_bola_y = 1; 
 } 

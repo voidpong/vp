@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -14,6 +15,9 @@
 #define UP 65
 #define DOWN 66
 
+#define COEFICIENTE_X_INICIAL 2
+#define COEFICIENTE_Y_INICIAL 1
+
 #define LINHAS_DA_MATRIZ 23
 #define COLUNAS_DA_MATRIZ 59
 #define CENTRO_DA_MATRIZ_X ((COLUNAS_DA_MATRIZ / 2))
@@ -22,9 +26,10 @@
 char matriz_campo_do_jogo[LINHAS_DA_MATRIZ][COLUNAS_DA_MATRIZ];
 int posicao_bola_x, posicao_bola_y;
 int COEFICIENTE_DE_X, COEFICIENTE_DE_Y;
-int primeiro3esquerdo;
-int primeiro3direito;
+int primeiro3esquerdo, primeiro3direito;
 int numjogador;
+int vida, adversario;
+char msgsocket[2];
 
 int done=0; 
 int sockfd;
@@ -33,6 +38,10 @@ pthread_mutex_t mutexsum = PTHREAD_MUTEX_INITIALIZER;
 void *enviarmensagem(char code[]);
 
 void *recebermensagem();
+
+void configurarsocket();
+
+void fecharconexaosocket();
 
 
 static struct termios g_old_kbd_mode;
@@ -97,6 +106,69 @@ static int getch(void)
         return 0;
     return temp;
 }
+
+void resetarjogo(){
+    COEFICIENTE_DE_X = COEFICIENTE_X_INICIAL;
+    COEFICIENTE_DE_Y = COEFICIENTE_Y_INICIAL;
+    posicao_bola_y = CENTRO_DA_MATRIZ_Y;
+    posicao_bola_x = CENTRO_DA_MATRIZ_X;
+}
+
+void inicializarjogo(){
+    resetarjogo();
+    vida = 3;
+    adversario = 3;
+    primeiro3esquerdo = 9;
+    primeiro3direito = 9;
+}
+
+void inicializarmatriz(){
+    int i,j;
+    for (i = 0; i < LINHAS_DA_MATRIZ; i++)
+    {
+        for (j = 0; j < COLUNAS_DA_MATRIZ; j++)
+        {
+            if (i == 0 || i == LINHAS_DA_MATRIZ-1)
+            {
+                matriz_campo_do_jogo[i][j] = '#';
+            }
+            else
+            {
+                matriz_campo_do_jogo[i][j] = ' ';
+            }
+            if ((j == 0 || j == COLUNAS_DA_MATRIZ-1) && (i == 9 || i == 13))
+            {
+                matriz_campo_do_jogo[i][j] = '3';
+            }
+            if ((j == 0 || j == COLUNAS_DA_MATRIZ-1) && (i == 10 || i == 12))
+            {
+                matriz_campo_do_jogo[i][j] = '2';
+            }
+            if ((j == 0 || j == COLUNAS_DA_MATRIZ-1) && i == 11)
+            {
+                matriz_campo_do_jogo[i][j] = '1';
+            }
+            if (i == CENTRO_DA_MATRIZ_Y && j == CENTRO_DA_MATRIZ_X)
+            {
+                matriz_campo_do_jogo[i][j] = '0';
+            }
+        }
+    }
+}
+
+void desenharmatriz(){
+    int i,j;
+    system("clear");
+    for (i = 0; i < LINHAS_DA_MATRIZ; i++)
+    {
+        for (j = 0; j < COLUNAS_DA_MATRIZ; j++)
+        {
+            printf("%c", matriz_campo_do_jogo[i][j]);
+        }
+        printf("\n");
+    }
+    printf("Vidas: %d\t\t\tAdversario: %d\n", vida,adversario);
+}
 void upesquerdo (int p)
 {
     matriz_campo_do_jogo[p-1][0] = '3';
@@ -151,14 +223,16 @@ void movimentarbola()
     if (posicao_bola_x >= COLUNAS_DA_MATRIZ-2) { 
         if(posicao_bola_x != COLUNAS_DA_MATRIZ-2) 
             posicao_bola_x = COLUNAS_DA_MATRIZ-2; 
-        if(posicao_bola_y-COEFICIENTE_DE_Y >= primeiro3direito && posicao_bola_y-COEFICIENTE_DE_Y <= primeiro3direito+4)
+        if(posicao_bola_y >= primeiro3direito && posicao_bola_y <= primeiro3direito+5)
             COEFICIENTE_DE_X *= -1;
         else{
             matriz_campo_do_jogo[posicao_bola_y][posicao_bola_x] = ' '; 
-            posicao_bola_y = CENTRO_DA_MATRIZ_Y; 
-            posicao_bola_x = CENTRO_DA_MATRIZ_X;
-            COEFICIENTE_DE_X = 1; 
-            COEFICIENTE_DE_Y = 2;
+            resetarjogo();
+            if(numjogador==2){
+                vida--;
+                msgsocket[0]='v';
+                enviarmensagem(msgsocket);
+            }
         }
     } 
     if (posicao_bola_y >= LINHAS_DA_MATRIZ-2) { 
@@ -169,14 +243,16 @@ void movimentarbola()
     if (posicao_bola_x <= 1) { 
         if(posicao_bola_x != 1) 
             posicao_bola_x = 1; 
-        if(posicao_bola_y-COEFICIENTE_DE_Y >= primeiro3esquerdo && posicao_bola_y-COEFICIENTE_DE_Y <= primeiro3esquerdo+4)
+        if(posicao_bola_y >= primeiro3esquerdo && posicao_bola_y <= primeiro3esquerdo+5)
             COEFICIENTE_DE_X *= -1;
         else{
             matriz_campo_do_jogo[posicao_bola_y][posicao_bola_x] = ' '; 
-            posicao_bola_y = CENTRO_DA_MATRIZ_Y; 
-            posicao_bola_x = CENTRO_DA_MATRIZ_X;
-            COEFICIENTE_DE_X = 1; 
-            COEFICIENTE_DE_Y = 2;
+            resetarjogo();
+            if(numjogador==1){
+                vida--;
+                msgsocket[0]='v';
+                enviarmensagem(msgsocket);
+            }
         } 
     }
 }
@@ -201,59 +277,11 @@ void moverbaixo(int jogouadv){
     }
 }
 
-void main ()
-{
-    int i, j, primeiro3, ispressed, moverbola=0;
+void jogo(){
+    int moverbola=0;
     char keypressed;
-    char msgsocket[2];
-    COEFICIENTE_DE_X = 1;
-    COEFICIENTE_DE_Y = 2;
-
-    configurarsocket();
-    //for para desenhar a matriz que representa o campo
-    for (i = 0; i < LINHAS_DA_MATRIZ; i++)
-    {
-        for (j = 0; j < COLUNAS_DA_MATRIZ; j++)
-        {
-            if (i == 0 || i == LINHAS_DA_MATRIZ-1)
-            {
-                matriz_campo_do_jogo[i][j] = '#';
-            }
-            else
-            {
-                matriz_campo_do_jogo[i][j] = ' ';
-            }
-            if ((j == 0 || j == COLUNAS_DA_MATRIZ-1) && (i == 9 || i == 13))
-            {
-                matriz_campo_do_jogo[i][j] = '3';
-            }
-            if ((j == 0 || j == COLUNAS_DA_MATRIZ-1) && (i == 10 || i == 12))
-            {
-                matriz_campo_do_jogo[i][j] = '2';
-            }
-            if ((j == 0 || j == COLUNAS_DA_MATRIZ-1) && i == 11)
-            {
-                matriz_campo_do_jogo[i][j] = '1';
-            }
-            if (i == CENTRO_DA_MATRIZ_Y && j == CENTRO_DA_MATRIZ_X)
-            {
-                matriz_campo_do_jogo[i][j] = '0';
-            }
-        }
-    }
-    for (i = 0; i < LINHAS_DA_MATRIZ; i++)
-    {
-        for (j = 0; j < COLUNAS_DA_MATRIZ; j++)
-        {
-            printf("%c", matriz_campo_do_jogo[i][j]);
-        }
-        printf("\n");
-    }
-    posicao_bola_y = CENTRO_DA_MATRIZ_Y;
-    posicao_bola_x = CENTRO_DA_MATRIZ_X;
-    primeiro3esquerdo = 9;
-    primeiro3direito = 9;
-    while (1)
+    desenharmatriz();
+    while (vida>0 && adversario>0)
     {
         if(moverbola==0)
             movimentarbola();
@@ -261,15 +289,7 @@ void main ()
             moverbola=0;
         else
             moverbola++;
-        system("clear");
-        for (i = 0; i < LINHAS_DA_MATRIZ; i++)
-        {
-            for (j = 0; j < COLUNAS_DA_MATRIZ; j++)
-            {
-                printf("%c", matriz_campo_do_jogo[i][j]);
-            }
-            printf("\n");
-        }
+        desenharmatriz();
         if(kbhit()){
             keypressed = getch();
             keypressed = getch();
@@ -289,18 +309,38 @@ void main ()
         }
         usleep(40000);
     }
+    system("clear");
+    if(vida>0){
+        printf("Voce venceu\n");
+    }else{
+        printf("Voce perdeu\n");
+    }
+}
+
+int main ()
+{
+    inicializarjogo();
+    configurarsocket();
+    inicializarmatriz();
+    jogo();
+    fecharconexaosocket();
+    return 0;
 }
 
 void configurarsocket(){
     int len;
     int result;
-    char buf[256];
+    char buf[256], end_ip[16];
     struct sockaddr_in address;
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
+    system("clear");
+    printf("Digite o endereco ip do servidor: ");
+    scanf("%s", end_ip);
+
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    address.sin_addr.s_addr = inet_addr(end_ip);
     address.sin_port = htons(9035);
 
     len = sizeof(address);
@@ -330,31 +370,20 @@ void configurarsocket(){
     while(!done);
 }
 
-void *enviarmensagem(char code[])
+void *enviarmensagem(char *code)
 {
-
     int bufsize=100;
     char *buffer=malloc(bufsize);
-
     bzero(buffer,bufsize);
-        
-    /*if(strcmp(code,"exit")==0)
-    {
-
-        done = 1;
-
-
-        pthread_mutex_destroy(&mutexsum);
-        pthread_exit(NULL);
-        close(sockfd);
-    } */   
-
     write(sockfd,code,strlen(code));
-
     pthread_mutex_lock (&mutexsum);
-
     pthread_mutex_unlock (&mutexsum);
+}
 
+void fecharconexaosocket(){
+    pthread_mutex_destroy(&mutexsum);
+    pthread_exit(NULL);
+    close(sockfd);
 }
 
 void *recebermensagem()
@@ -380,7 +409,9 @@ void *recebermensagem()
         if(buffer[0]=='c'){
             done=1;
         }
-        //printf("%c\n", buffer[0]);
+        if(buffer[0]=='v'){
+            adversario--;
+        }
 
         pthread_mutex_lock (&mutexsum);
         pthread_mutex_unlock (&mutexsum);

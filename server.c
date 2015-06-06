@@ -11,7 +11,7 @@
 #define SERVER_BUSY "Nao ha mais conexoes disponiveis\n"
 
 #define MAX_USERS 2
-#define MSG_LEN 4096
+#define MSG_LEN 10
 
 int socket_listening ;
 fd_set select_set ;
@@ -23,11 +23,6 @@ int  list_len = 0 ;
 int flag = 0;
 
 char msg[MSG_LEN+1] ;
-
-void show_help(char *name) {
-	printf("Servidor VoidPong\n") ;
-	printf("[uso] %s <port> [<max_users>]\n", name) ;
-}
 
 char insert_socket_into_list(int socket) {
     int i ;
@@ -72,7 +67,7 @@ char get_message_from_socket(int _sock) {
     return 0 ;
 }
 
-void send_message_to_all(int _sock) {
+void send_message_to_socket(int _sock) {
     int i ;
 
     for ( i = 0; i < max_users; i++ ) {
@@ -85,23 +80,16 @@ void send_message_to_all(int _sock) {
     }
 }
 
-int main(int argc, char **argv) {
-    int port;
+int main() {
+    int porta;
     int t;
 
     struct sockaddr_in server ;
     struct timeval select_time ;
 
-    if ( argc == 1 ) {
-        show_help(argv[0]);
-        return -1;
-    }
+    max_users = 2;
 
-    if ( argc > 2 ) {
-        max_users = atoi(argv[2]);
-    }
-
-    port = atoi(argv[1]);
+    porta = 9035;
 
     socket_listening = socket(AF_INET, SOCK_STREAM, 0) ;
 
@@ -111,7 +99,7 @@ int main(int argc, char **argv) {
     }
 
     server.sin_family = AF_INET ;
-    server.sin_port = htons(port) ;
+    server.sin_port = htons(porta) ;
     server.sin_addr.s_addr = INADDR_ANY ;
 
     t = sizeof(struct sockaddr_in) ;
@@ -125,8 +113,8 @@ int main(int argc, char **argv) {
         return -1 ;
     }
 
-    list_of_sockets = (int *) malloc( max_users * sizeof(int) ) ;
-    if ( list_of_sockets == NULL ) {
+    list_of_sockets = (int *) malloc(max_users * sizeof(int)) ;
+    if (list_of_sockets == NULL) {
         perror("malloc") ;
         return -1 ;
     }
@@ -143,11 +131,14 @@ int main(int argc, char **argv) {
             }
         }
 
-        printf("[+] Ouvindo na porta %d [%d/%d] ...\n", port, list_len, max_users) ;
+        printf("[+] Ouvindo na porta %d [%d/%d] ...\n", porta, list_len, max_users) ;
         if(list_len==2){        	
 	    	msg[0] = 'c';
-        	send_message_to_all(list_of_sockets[0]);
-        	send_message_to_all(list_of_sockets[1]);
+        	send_message_to_socket(list_of_sockets[0]);
+        	send_message_to_socket(list_of_sockets[1]);
+        }
+        if(list_len<2){
+        	flag=0;
         }
         select_time.tv_sec = 2 ;
         select_time.tv_usec = 0 ;
@@ -172,22 +163,21 @@ int main(int argc, char **argv) {
             	if(list_len==2 && !flag){
 	            	msg[0] = 'j';
 		        	msg[1] = 1+'0';
-		        	send_message_to_all(list_of_sockets[0]);
+		        	send_message_to_socket(list_of_sockets[0]);
 		        	msg[1] = 2+'0';
-		        	send_message_to_all(list_of_sockets[1]);
+		        	send_message_to_socket(list_of_sockets[1]);
 		        	flag = 1;
 		        }
                 int i ;
                 for ( i = 0; i < max_users; i++ ) {
                     if ( FD_ISSET(list_of_sockets[i], &select_set) ) {
                         if ( get_message_from_socket(list_of_sockets[i]) == 0 ) {
-                            send_message_to_all(list_of_sockets[i]) ;
+                            send_message_to_socket(list_of_sockets[i]) ;
                         }
                     }
                 }
             }
         }
     } 
-
     return 0 ;
 }

@@ -139,26 +139,49 @@ void downdireito (int p)
 
 void movimentarbola()
 {
-    matriz_campo_do_jogo[posicao_bola_y][posicao_bola_x] = ' ';
-    posicao_bola_y += COEFICIENTE_DE_Y;
-    posicao_bola_x += COEFICIENTE_DE_X;
-    matriz_campo_do_jogo[posicao_bola_y][posicao_bola_x] = '0';
-    if (posicao_bola_y <= 1)
-    {
-        COEFICIENTE_DE_Y = +2;
-    }
-    if (posicao_bola_x >= COLUNAS_DA_MATRIZ-2)
-    {
-        COEFICIENTE_DE_X = -1;
-    }
-    if (posicao_bola_y >= LINHAS_DA_MATRIZ-2)
-    {
-        COEFICIENTE_DE_Y = -2;
-    }
-    if (posicao_bola_x <= 1)
-    {
-        COEFICIENTE_DE_X = +1;
-    }
+matriz_campo_do_jogo[posicao_bola_y][posicao_bola_x] = ' '; 
+posicao_bola_y += COEFICIENTE_DE_Y; 
+posicao_bola_x += COEFICIENTE_DE_X; 
+matriz_campo_do_jogo[posicao_bola_y][posicao_bola_x] = '0'; 
+if (posicao_bola_y <= 1) 
+{ 
+	COEFICIENTE_DE_Y *= -1; 
+	if(posicao_bola_y != 1) 
+		posicao_bola_y = 1; 
+} 
+if (posicao_bola_x >= COLUNAS_DA_MATRIZ-2) 
+{ 
+	if(posicao_bola_x != COLUNAS_DA_MATRIZ-2) 
+		posicao_bola_x = COLUNAS_DA_MATRIZ-2; 
+	if(posicao_bola_y >= posicao3direito && posicao_bola_y <= posicao3direito+4)
+		COEFICIENTE_DE_X *= -1;
+	else
+	{
+		posicao_bola_y = CENTRO_DA_MATRIZ_Y; 
+		posicao_bola_x = CENTRO_DA_MATRIZ_X;
+		COEFICIENTE_DE_X = 1; 
+		COEFICIENTE_DE_Y = 2;
+	}
+} 
+if (posicao_bola_y >= LINHAS_DA_MATRIZ-2) 
+{ 
+	COEFICIENTE_DE_Y *= -1; 
+	if(posicao_bola_y != LINHAS_DA_MATRIZ-2) 
+		posicao_bola_y = LINHAS_DA_MATRIZ-2; 
+} 
+if (posicao_bola_x <= 1) 
+{ 
+	if(posicao_bola_x != 1) 
+		posicao_bola_x = 1; 
+	if(posicao_bola_y >= posicao3esquerdo && posicao_bola_y <= posicao3esquerdo+4)
+		COEFICIENTE_DE_X *= -1;
+	else
+	{
+		posicao_bola_y = CENTRO_DA_MATRIZ_Y; 
+		posicao_bola_x = CENTRO_DA_MATRIZ_X;
+		COEFICIENTE_DE_X = 1; 
+		COEFICIENTE_DE_Y = 2;
+	} 
 }
 
 void movercima(int jogouadv){ //jogouadv = 1 -> jogador; jogouadv = 2 -> adversario

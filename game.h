@@ -40,9 +40,6 @@ void *recebermensagem();
 
 void configurarsocket();
 
-void fechar_jogo();
-
-
 static struct termios g_old_kbd_mode;
 static void cooked(void)
 {

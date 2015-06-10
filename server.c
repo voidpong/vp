@@ -137,8 +137,11 @@ int main() {
         	send_message_to_socket(list_of_sockets[0]);
         	send_message_to_socket(list_of_sockets[1]);
         }
-        if(list_len<2){
+        if(list_len<2 && flag==1){
         	flag=0;
+            msg[0] = 's';
+            send_message_to_socket(list_of_sockets[0]);
+            send_message_to_socket(list_of_sockets[1]);
         }
         select_time.tv_sec = 2 ;
         select_time.tv_usec = 0 ;

@@ -380,6 +380,8 @@ void *enviarmensagem(char *code)
 }
 
 void fechar_jogo(){
+    printf("\n\tTecle espaço para sair...\n");
+    while (getch()!=' ');
     exit(1);
 }
 

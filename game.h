@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +40,7 @@ void *recebermensagem();
 
 void configurarsocket();
 
-void fecharconexaosocket();
+void fechar_jogo();
 
 
 static struct termios g_old_kbd_mode;
@@ -96,12 +95,12 @@ static int kbhit(void)
 }
 /*****************************************************************************
 *****************************************************************************/
-static int getch(void)
+static int getch_game(void)
 {
     unsigned char temp;
 
     raw();
-/* stdin = fd 0 */
+// stdin = fd 0
     if(read(0, &temp, 1) != 1)
         return 0;
     return temp;
@@ -291,9 +290,9 @@ void jogo(){
             moverbola++;
         desenharmatriz();
         if(kbhit()){
-            keypressed = getch();
-            keypressed = getch();
-            keypressed = getch();
+            keypressed = getch_game();
+            keypressed = getch_game();
+            keypressed = getch_game();
             if (keypressed == UP)
             {
                 movercima(1);
@@ -317,13 +316,13 @@ void jogo(){
     }
 }
 
-int main ()
+int chamar_jogo ()
 {
     inicializarjogo();
     configurarsocket();
     inicializarmatriz();
     jogo();
-    fecharconexaosocket();
+    fechar_jogo();
     return 0;
 }
 
@@ -380,10 +379,8 @@ void *enviarmensagem(char *code)
     pthread_mutex_unlock (&mutexsum);
 }
 
-void fecharconexaosocket(){
-    pthread_mutex_destroy(&mutexsum);
-    pthread_exit(NULL);
-    close(sockfd);
+void fechar_jogo(){
+    exit(1);
 }
 
 void *recebermensagem()

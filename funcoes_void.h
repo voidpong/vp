@@ -52,9 +52,8 @@ void creditos(){
     puts ("");
     print_central("Agradecimentos:");
     puts ("");
-    print_central(" ");
-    print_central(" ");
-    print_central(" ");
-    print_central(" ");
+    print_central("Rodrigo Paes");
+    print_central("Alfredo Lima");
+    print_central("Arthur Vangasse");
     getch();
 }
